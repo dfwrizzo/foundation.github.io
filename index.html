@@ -66,42 +66,41 @@
         
         #jumpscare-toggle { display: none; border: 1px dashed #555; color: #555; font-size: 0.7rem; padding: 8px; }
         
-       /* Intense Screen Shake */
-@keyframes intense-shake {
-    0% { transform: translate(1px, 1px) rotate(0deg); }
-    10% { transform: translate(-2px, -3px) rotate(-1deg); }
-    20% { transform: translate(-4px, 0px) rotate(1deg); }
-    30% { transform: translate(4px, 3px) rotate(0deg); }
-    40% { transform: translate(1px, -1px) rotate(1deg); }
-    50% { transform: translate(-1px, 3px) rotate(-1deg); }
-    60% { transform: translate(-4px, 1px) rotate(0deg); }
-    70% { transform: translate(4px, 1px) rotate(-1deg); }
-    80% { transform: translate(-1px, -1px) rotate(1deg); }
-    90% { transform: translate(1px, 3px) rotate(0deg); }
-    100% { transform: translate(1px, -2px) rotate(-1deg); }
-}
+        /* Intense Screen Shake */
+        @keyframes intense-shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-2px, -3px) rotate(-1deg); }
+            20% { transform: translate(-4px, 0px) rotate(1deg); }
+            30% { transform: translate(4px, 3px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 3px) rotate(-1deg); }
+            60% { transform: translate(-4px, 1px) rotate(0deg); }
+            70% { transform: translate(4px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 3px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
 
-.shake-active {
-    animation: intense-shake 0.1s infinite;
-}
+        .shake-active { animation: intense-shake 0.1s infinite; }
 
-#jumpscare {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: black;
-    z-index: 1000;
-    display: none;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-}
+        #jumpscare {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: black;
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
 
-#jumpscare img {
-    width: 115%; /* Oversized for shake room */
-    height: 115%;
-    object-fit: cover;
-}
+        #jumpscare img {
+            width: 120%; /* Oversized for shake room */
+            height: 120%;
+            object-fit: cover;
+        }
+
         /* Salvation Screens */
         #salvation-overlay { display:none; position:fixed; z-index:100; top:0; left:0; width:100%; height:100%; background:black; color:white; flex-direction:column; justify-content:center; align-items:center; padding:20px; text-align:center; }
     </style>
@@ -113,7 +112,6 @@
 
     <div id="overlay">
         <div id="content-area"></div>
-        
         <div class="btn-group">
             <button onclick="resetGame()">TRY AGAIN</button>
             <button id="share-btn" onclick="shareGame()">SHARE WITH FRIENDS</button>
@@ -137,8 +135,8 @@
     </div>
 
     <div id="jumpscare">
-        <img id="scare-img" src="https://via.placeholder.com/800x1200/000000/ff0000?text=I+SEE+YOU">
-        <audio id="scream-snd" src="https://www.soundjay.com/human/sounds/scream-01.mp3"></audio>
+        <img id="scare-img" src="">
+        <audio id="scream-snd" src=""></audio>
     </div>
 
     <canvas id="game"></canvas>
@@ -154,6 +152,10 @@
     
     const gravity = 0.16, jumpPower = -5.8, pipeSpeed = 2.4, pipeGap = 190;
     let bird = { x: 50, y: 0, velocity: 0, radius: 10 }, pipes = [];
+
+    // ASSETS (GitHub Pages Paths)
+    const SCARE_IMAGES = ["assets/scare1.jpg", "assets/scare2.jpg"];
+    const SCARE_SOUNDS = ["assets/scream.mp3"];
 
     const BIBLE_VERSES = [
         "John 3:16 - For God so loved the world, that He gave His only begotten Son.",
@@ -185,8 +187,8 @@
         
         isLightMode = true;
         jumpscareEnabled = false;
-        document.getElementById('jumpscare').classList.remove('shake-active'); // Security check
-    document.body.classList.add('light-mode');
+        document.getElementById('jumpscare').classList.remove('shake-active');
+        document.body.classList.add('light-mode');
     }
 
     function closeSalvation() { document.getElementById('salvation-overlay').style.display = 'none'; resetGame(); }
@@ -194,6 +196,7 @@
     function gameOver() {
         if (!gameActive) return;
         gameActive = false;
+        // 30% chance for a jumpscare if enabled
         if (jumpscareEnabled && Math.random() < 0.3) {
             hasExperiencedScare = true;
             triggerScare();
@@ -202,42 +205,32 @@
         }
     }
 
-    function triggerScare() // Point these to your folder paths
-const SCARE_IMAGES = [
-    "assets/scare1.jpg", 
-    "assets/scare2.jpg"
-];
+    function triggerScare() {
+        const js = document.getElementById('jumpscare');
+        const img = document.getElementById('scare-img');
+        const snd = document.getElementById('scream-snd');
 
-const SCARE_SOUNDS = [
-    "assets/scream.mp3"
-];
+        // Pick random assets
+        img.src = SCARE_IMAGES[Math.floor(Math.random() * SCARE_IMAGES.length)];
+        snd.src = SCARE_SOUNDS[Math.floor(Math.random() * SCARE_SOUNDS.length)];
 
-function triggerScare() {
-    const js = document.getElementById('jumpscare');
-    const img = document.getElementById('scare-img');
-    const snd = document.getElementById('scream-snd');
+        // Prep sound
+        snd.currentTime = 0;
+        snd.volume = 1.0;
+        
+        // Show, Shake, and Play
+        js.style.display = 'flex';
+        js.classList.add('shake-active');
+        snd.play().catch(e => console.log("Audio play blocked by browser."));
 
-    // Pick random assets from your folder
-    img.src = SCARE_IMAGES[Math.floor(Math.random() * SCARE_IMAGES.length)];
-    snd.src = SCARE_SOUNDS[Math.floor(Math.random() * SCARE_SOUNDS.length)];
-
-    // Reset and play sound
-    snd.currentTime = 0;
-    snd.volume = 1.0;
-    snd.play().catch(() => console.log("Audio blocked - interaction needed"));
-
-    // Show and Shake
-    js.style.display = 'flex';
-    js.classList.add('shake-active');
-
-    // Cleanup
-    setTimeout(() => {
-        js.style.display = 'none';
-        js.classList.remove('shake-active');
-        snd.pause();
-        showEndScreen();
-    }, 1200);
-}
+        // Cleanup after 1.2s
+        setTimeout(() => {
+            js.style.display = 'none';
+            js.classList.remove('shake-active');
+            snd.pause();
+            showEndScreen();
+        }, 1200);
+    }
 
     function showEndScreen() {
         const area = document.getElementById('content-area');
