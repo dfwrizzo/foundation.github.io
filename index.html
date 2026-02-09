@@ -14,6 +14,15 @@
         body { margin: 0; background: #050505; color: white; font-family: 'Courier New', Courier, monospace; overflow: hidden; touch-action: none; transition: background 1.5s; }
         canvas { display: block; width: 100vw; height: 100vh; }
 
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: black; z-index: 2000; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center;
+        }
+        .loader-text { font-size: 1.2rem; letter-spacing: 5px; color: var(--blood-red); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
         /* Scoring and Title */
         #game-title {
             position: absolute; top: 4%; width: 100%; text-align: center;
@@ -40,8 +49,7 @@
         .marketing-header { font-size: 0.9rem; letter-spacing: 2px; margin-bottom: 5px; opacity: 0.8; }
         .location-box {
             border: 2px solid var(--blood-red);
-            padding: 20px;
-            margin: 15px 0;
+            padding: 20px; margin: 15px 0;
             background: rgba(255, 71, 87, 0.1);
         }
         .location-text { font-size: 1.8rem; font-weight: bold; display: block; letter-spacing: 3px; color: white; }
@@ -63,10 +71,9 @@
         
         #share-btn { border-color: white; color: white; }
         body.light-mode #share-btn { border-color: #000; color: #000; }
-        
         #jumpscare-toggle { display: none; border: 1px dashed #555; color: #555; font-size: 0.7rem; padding: 8px; }
         
-        /* Intense Screen Shake */
+        /* Jumpscare Visuals */
         @keyframes intense-shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
             10% { transform: translate(-2px, -3px) rotate(-1deg); }
@@ -80,32 +87,23 @@
             90% { transform: translate(1px, 3px) rotate(0deg); }
             100% { transform: translate(1px, -2px) rotate(-1deg); }
         }
-
         .shake-active { animation: intense-shake 0.1s infinite; }
-
         #jumpscare {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            background: black;
-            z-index: 1000;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: black; z-index: 1000; display: none;
+            justify-content: center; align-items: center; overflow: hidden;
         }
-
-        #jumpscare img {
-            width: 120%; /* Oversized for shake room */
-            height: 120%;
-            object-fit: cover;
-        }
+        #jumpscare img { width: 120%; height: 120%; object-fit: cover; }
 
         /* Salvation Screens */
         #salvation-overlay { display:none; position:fixed; z-index:100; top:0; left:0; width:100%; height:100%; background:black; color:white; flex-direction:column; justify-content:center; align-items:center; padding:20px; text-align:center; }
     </style>
 </head>
 <body>
+
+    <div id="loading-screen">
+        <div class="loader-text">PREPARING YOUR FATE...</div>
+    </div>
 
     <div id="game-title">YOU HAVE BEEN CHOSEN</div>
     <div id="score-display">0</div>
@@ -148,14 +146,42 @@
     const overlay = document.getElementById('overlay');
     
     let isLightMode = false, jumpscareEnabled = true, hasExperiencedScare = false;
-    let score = 0, gameActive = true, width, height, dpr, frameCount = 0;
+    let score = 0, gameActive = false, width, height, dpr, frameCount = 0;
     
     const gravity = 0.16, jumpPower = -5.8, pipeSpeed = 2.4, pipeGap = 190;
     let bird = { x: 50, y: 0, velocity: 0, radius: 10 }, pipes = [];
 
-    // ASSETS (GitHub Pages Paths)
+    // ASSETS
     const SCARE_IMAGES = ["assets/scare1.jpg", "assets/scare2.jpg"];
     const SCARE_SOUNDS = ["assets/scream.mp3"];
+
+    // PRELOADER LOGIC
+    let assetsLoaded = 0;
+    const totalAssets = SCARE_IMAGES.length + SCARE_SOUNDS.length;
+
+    function checkAssets() {
+        assetsLoaded++;
+        if (assetsLoaded >= totalAssets) {
+            document.getElementById('loading-screen').style.display = 'none';
+            gameActive = true; // Start game once loaded
+        }
+    }
+
+    // Preload Images
+    SCARE_IMAGES.forEach(src => {
+        const img = new Image();
+        img.src = src;
+        img.onload = checkAssets;
+        img.onerror = checkAssets; // Skip if file missing
+    });
+
+    // Preload Audio
+    SCARE_SOUNDS.forEach(src => {
+        const audio = new Audio();
+        audio.src = src;
+        audio.oncanplaythrough = checkAssets;
+        audio.onerror = checkAssets;
+    });
 
     const BIBLE_VERSES = [
         "John 3:16 - For God so loved the world, that He gave His only begotten Son.",
@@ -173,63 +199,37 @@
         bird.y = height / 2; bird.x = width * 0.2;
     }
 
-    function showSalvation() { document.getElementById('salvation-overlay').style.display = 'flex'; }
-
-    function salvationAnswer(yes) {
-        document.getElementById('salvation-dialog').style.display = 'none';
-        const res = document.getElementById('salvation-result');
-        const msg = document.getElementById('result-msg');
-        const quote = document.getElementById('bible-quote');
-
-        msg.innerText = yes ? "You are already saved through the blood of Jesus Christ!" : "Too bad, Jesus Christ has saved you and He loves you very much.";
-        quote.innerText = BIBLE_VERSES[Math.floor(Math.random() * BIBLE_VERSES.length)];
-        res.style.display = 'block';
-        
-        isLightMode = true;
-        jumpscareEnabled = false;
-        document.getElementById('jumpscare').classList.remove('shake-active');
-        document.body.classList.add('light-mode');
-    }
-
-    function closeSalvation() { document.getElementById('salvation-overlay').style.display = 'none'; resetGame(); }
-
-    function gameOver() {
-        if (!gameActive) return;
-        gameActive = false;
-        // 30% chance for a jumpscare if enabled
-        if (jumpscareEnabled && Math.random() < 0.3) {
-            hasExperiencedScare = true;
-            triggerScare();
-        } else {
-            showEndScreen();
-        }
-    }
-
     function triggerScare() {
         const js = document.getElementById('jumpscare');
         const img = document.getElementById('scare-img');
         const snd = document.getElementById('scream-snd');
 
-        // Pick random assets
         img.src = SCARE_IMAGES[Math.floor(Math.random() * SCARE_IMAGES.length)];
         snd.src = SCARE_SOUNDS[Math.floor(Math.random() * SCARE_SOUNDS.length)];
-
-        // Prep sound
         snd.currentTime = 0;
         snd.volume = 1.0;
         
-        // Show, Shake, and Play
         js.style.display = 'flex';
         js.classList.add('shake-active');
-        snd.play().catch(e => console.log("Audio play blocked by browser."));
+        snd.play().catch(() => {});
 
-        // Cleanup after 1.2s
         setTimeout(() => {
             js.style.display = 'none';
             js.classList.remove('shake-active');
             snd.pause();
             showEndScreen();
         }, 1200);
+    }
+
+    function gameOver() {
+        if (!gameActive) return;
+        gameActive = false;
+        if (jumpscareEnabled && Math.random() < 0.35) {
+            hasExperiencedScare = true;
+            triggerScare();
+        } else {
+            showEndScreen();
+        }
     }
 
     function showEndScreen() {
@@ -239,7 +239,7 @@
                 <p class="marketing-header">PEACE BE WITH YOU</p>
                 <div class="location-box">
                     <span class="location-text">VISIT JRN 104</span>
-                    <span class="date-text">FEB 11-14 | 8 AM</span>
+                    <span class="date-text">FEB 11-14 | 8 PM</span>
                 </div>
                 <p style="font-size:0.85rem; padding:10px;">${BIBLE_VERSES[Math.floor(Math.random() * BIBLE_VERSES.length)]}</p>
             `;
@@ -249,7 +249,7 @@
                 <p class="marketing-header">YOUR SOUL CAN NEVER ESCAPE</p>
                 <div class="location-box">
                     <span class="location-text">VISIT JRN 104</span>
-                    <span class="date-text">FEB 11-14 | 8 AM</span>
+                    <span class="date-text">FEB 11-14 | 8 PM</span>
                 </div>
                 <p style="font-size:0.8rem; opacity:0.6;">Only the chosen find the way out.</p>
             `;
@@ -258,21 +258,29 @@
         overlay.style.display = 'flex';
     }
 
+    // Standard Game Functions
+    function showSalvation() { document.getElementById('salvation-overlay').style.display = 'flex'; }
+    function salvationAnswer(yes) {
+        document.getElementById('salvation-dialog').style.display = 'none';
+        const res = document.getElementById('salvation-result');
+        const msg = document.getElementById('result-msg');
+        const quote = document.getElementById('bible-quote');
+        msg.innerText = yes ? "You are already saved through the blood of Jesus Christ!" : "Too bad, Jesus Christ has saved you and He loves you very much.";
+        quote.innerText = BIBLE_VERSES[Math.floor(Math.random() * BIBLE_VERSES.length)];
+        res.style.display = 'block';
+        isLightMode = true; jumpscareEnabled = false;
+        document.body.classList.add('light-mode');
+    }
+    function closeSalvation() { document.getElementById('salvation-overlay').style.display = 'none'; resetGame(); }
     function resetGame() {
         score = 0; pipes = []; bird.y = height / 2; bird.velocity = 0;
         scoreEl.innerText = "0"; gameActive = true; overlay.style.display = 'none';
     }
-
     function shareGame() {
         const text = isLightMode ? "I found the way out! Visit JRN 104:" : "Can you escape JRN 104? Play this:";
-        if (navigator.share) {
-            navigator.share({ title: 'JRN 104 Escape', text: text, url: window.location.href });
-        } else {
-            navigator.clipboard.writeText(window.location.href);
-            alert("Link copied! Share it with your friends.");
-        }
+        if (navigator.share) { navigator.share({ title: 'JRN 104 Escape', text: text, url: window.location.href }); }
+        else { navigator.clipboard.writeText(window.location.href); alert("Link copied!"); }
     }
-
     function update() {
         if (!gameActive) return;
         bird.velocity += gravity; bird.y += bird.velocity;
@@ -291,7 +299,6 @@
         pipes = pipes.filter(p => p.x + 70 > 0);
         frameCount++;
     }
-
     function draw() {
         ctx.fillStyle = isLightMode ? '#f0f8ff' : '#050505';
         ctx.fillRect(0, 0, width, height);
@@ -306,14 +313,10 @@
         });
         ctx.fillStyle = isLightMode ? '#ffd700' : '#00f2ff';
         ctx.shadowBlur = 15; ctx.shadowColor = ctx.fillStyle;
-        if (isLightMode) {
-            ctx.fillRect(bird.x - 4, bird.y - 12, 8, 24); ctx.fillRect(bird.x - 12, bird.y - 4, 24, 8); 
-        } else {
-            ctx.beginPath(); ctx.arc(bird.x, bird.y, 10, 0, Math.PI * 2); ctx.fill();
-        }
+        if (isLightMode) { ctx.fillRect(bird.x - 4, bird.y - 12, 8, 24); ctx.fillRect(bird.x - 12, bird.y - 4, 24, 8); } 
+        else { ctx.beginPath(); ctx.arc(bird.x, bird.y, 10, 0, Math.PI * 2); ctx.fill(); }
         ctx.shadowBlur = 0;
     }
-
     function loop() { update(); draw(); requestAnimationFrame(loop); }
     const jump = (e) => { if(e.type === 'touchstart') e.preventDefault(); if(gameActive) bird.velocity = jumpPower; };
     window.addEventListener('touchstart', jump, {passive: false});
@@ -322,4 +325,4 @@
     resize(); loop();
 </script>
 </body>
-</html>
+</html
