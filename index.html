@@ -8,20 +8,25 @@
         :root {
             --neon-blue: #00f2ff;
             --blood-red: #ff4757;
+            --holy-gold: #ffd700;
+            --heaven-white: #ffffff;
         }
-        body { margin: 0; background: #000; color: white; font-family: 'Courier New', Courier, monospace; overflow: hidden; touch-action: none; }
+        body { margin: 0; background: #000; color: white; font-family: 'Courier New', Courier, monospace; overflow: hidden; touch-action: none; transition: background 1s; }
         canvas { display: block; width: 100vw; height: 100vh; }
+
+        /* Mode Styles */
+        body.light-mode { background: #87CEEB; color: #333; }
 
         #game-title {
             position: absolute; top: 5%; width: 100%; text-align: center;
             font-size: 1.2rem; letter-spacing: 3px; color: var(--neon-blue);
             text-shadow: 0 0 8px var(--neon-blue); pointer-events: none;
-            text-transform: uppercase; animation: flicker 3s infinite;
-            z-index: 5;
+            text-transform: uppercase; z-index: 5;
         }
+        body.light-mode #game-title { color: white; text-shadow: 0 0 10px var(--holy-gold); }
 
         #ui { position: absolute; top: 12%; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
-        #score { font-size: 50px; font-weight: bold; opacity: 0.8; color: white; }
+        #score { font-size: 50px; font-weight: bold; }
 
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -29,69 +34,57 @@
             flex-direction: column; justify-content: center; align-items: center;
             padding: 20px; box-sizing: border-box; z-index: 20; text-align: center;
         }
+        body.light-mode #overlay { background: rgba(255, 255, 255, 0.95); color: #222; }
 
-        .invite-text { 
-            color: var(--blood-red); font-size: 1.1rem; margin-bottom: 20px;
-            line-height: 1.6; max-width: 400px;
-        }
+        /* Salvation Dialogue */
+        #salvation-choice { display: none; flex-direction: column; gap: 15px; }
+        #salvation-result { display: none; font-style: italic; color: var(--holy-gold); padding: 15px; }
+        body.light-mode #salvation-result { color: #555; }
 
-        .glitch { font-weight: bold; text-transform: uppercase; font-size: 1.3rem; display: block; margin-top: 10px; color: white; }
-
-        .btn-group { display: flex; flex-direction: column; gap: 12px; width: 80%; max-width: 300px; }
+        .btn-group { display: flex; flex-direction: column; gap: 10px; width: 80%; max-width: 300px; margin-top: 15px; }
         button { 
             background: transparent; border: 1px solid var(--neon-blue); color: var(--neon-blue);
-            padding: 15px; cursor: pointer; font-family: inherit; font-weight: bold; text-transform: uppercase;
+            padding: 12px; cursor: pointer; font-family: inherit; font-weight: bold; text-transform: uppercase;
         }
-        button:active { background: var(--neon-blue); color: black; }
+        body.light-mode button { border-color: #555; color: #555; }
 
-        #copy-btn { border-color: #777; color: #bbb; font-size: 0.7rem; border-style: dashed; }
-
-        #jumpscare {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: black; z-index: 100; display: none;
-        }
+        #jumpscare { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: black; z-index: 100; display: none; }
         #jumpscare img { width: 100%; height: 100%; object-fit: cover; }
-
-        @keyframes flicker {
-            0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; }
-            20%, 24%, 55% { opacity: 0.3; }
-        }
-
-        /* Screen Shake Animation */
-        @keyframes shake {
-            0% { transform: translate(1px, 1px); }
-            20% { transform: translate(-3px, 0px); }
-            40% { transform: translate(3px, 2px); }
-            60% { transform: translate(-3px, 1px); }
-            80% { transform: translate(-1px, -1px); }
-            100% { transform: translate(1px, -2px); }
-        }
-        .shaking { animation: shake 0.1s infinite; }
     </style>
 </head>
 <body>
 
     <div id="game-title">YOU HAVE BEEN CHOSEN</div>
-    
-    <div id="ui">
-        <div id="score">0</div>
-    </div>
+    <div id="ui"><div id="score">0</div></div>
 
     <div id="overlay">
-        <div class="invite-text">
-            YOUR SOUL HAS FALLEN...<br>
-            <span class="glitch">VISIT OUR ESCAPE ROOM AT JRN 104</span><br>
-            FEB 11-14 | 8 AM
+        <div id="main-ui">
+            <div id="lose-verse" style="color: var(--blood-red); margin-bottom: 10px; font-size: 0.8rem;"></div>
+            <div style="font-size: 1.1rem; margin-bottom: 20px;">
+                VISIT JRN 104 | FEB 11-14 | 8 AM
+            </div>
+            <div class="btn-group">
+                <button onclick="resetGame()">RETRY</button>
+                <button id="jumpscare-toggle" onclick="showSalvation()">TURN OFF JUMPSCARE</button>
+            </div>
         </div>
-        <div class="btn-group">
-            <button onclick="resetGame()">TRY TO ESCAPE AGAIN</button>
-            <button id="copy-btn" onclick="copyLink()">CURSE A FRIEND (COPY LINK)</button>
+
+        <div id="salvation-choice">
+            <p>WANT TO BE SAVED?</p>
+            <button onclick="salvationAnswer(true)">YES</button>
+            <button onclick="salvationAnswer(false)">NO</button>
+        </div>
+
+        <div id="salvation-result">
+            <p id="result-msg"></p>
+            <p id="bible-quote" style="font-size: 0.9rem; border-top: 1px solid #ccc; padding-top: 10px;"></p>
+            <button onclick="closeSalvation()">CONTINUE IN LIGHT</button>
         </div>
     </div>
 
     <div id="jumpscare">
-        <img id="scare-img" src="">
-        <audio id="scream-snd"></audio>
+        <img id="scare-img" src="https://via.placeholder.com/800x1200/000000/ff0000?text=I+SEE+YOU">
+        <audio id="scream-snd" src="https://www.soundjay.com/human/sounds/scream-01.mp3"></audio>
     </div>
 
     <canvas id="game"></canvas>
@@ -99,160 +92,152 @@
 <script>
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('score');
     const overlay = document.getElementById('overlay');
-
-    // --- CONFIGURE ASSETS HERE ---
-    const IMAGES = ["https://via.placeholder.com/800x1200/000000/ff0000?text=I+SEE+YOU"]; 
-    const SOUNDS = ["https://www.soundjay.com/human/sounds/scream-01.mp3"];
-
-    let width, height, dpr;
-    let score = 0, gameActive = true;
     
-    // Updated Physics for Floatier Movement
-    const gravity = 0.15;    
-    const jumpPower = -6;   
-    const pipeWidth = 70;
-    const pipeGap = 190;
-    const pipeSpeed = 2.2;
-
+    let isLightMode = false;
+    let jumpscareEnabled = true;
+    let score = 0, gameActive = true;
+    let width, height, dpr;
+    
+    const gravity = 0.15, jumpPower = -6, pipeSpeed = 2.2;
     let bird = { x: 50, y: 0, velocity: 0, radius: 10 };
-    let pipes = [];
-    let frameCount = 0;
+    let pipes = [], frameCount = 0;
+
+    const BIBLE_VERSES = [
+        "John 3:16 - For God so loved the world, that He gave His only begotten Son.",
+        "Philippians 4:13 - I can do all things through Christ who strengthens me.",
+        "Psalm 23:1 - The Lord is my shepherd; I shall not want.",
+        "Romans 8:38 - Nothing shall be able to separate us from the love of God.",
+        "John 14:6 - I am the way, the truth, and the life.",
+        "Joshua 1:9 - Be strong and courageous. Do not be afraid."
+    ];
 
     function resize() {
         dpr = window.devicePixelRatio || 1;
-        width = window.innerWidth;
-        height = window.innerHeight;
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
+        width = window.innerWidth; height = window.innerHeight;
+        canvas.width = width * dpr; canvas.height = height * dpr;
         ctx.scale(dpr, dpr);
-        bird.y = height / 2;
-        bird.x = width * 0.2;
+        bird.y = height / 2; bird.x = width * 0.2;
     }
 
-    function spawnPipe() {
-        const minPipeHeight = 80;
-        const totalPipeSpace = height - pipeGap;
-        const topPipeHeight = Math.random() * (totalPipeSpace - minPipeHeight * 2) + minPipeHeight;
-        pipes.push({ x: width, topHeight: topPipeHeight, passed: false });
+    function showSalvation() {
+        document.getElementById('main-ui').style.display = 'none';
+        document.getElementById('salvation-choice').style.display = 'flex';
+    }
+
+    function salvationAnswer(yes) {
+        document.getElementById('salvation-choice').style.display = 'none';
+        const result = document.getElementById('salvation-result');
+        const msg = document.getElementById('result-msg');
+        const quote = document.getElementById('bible-quote');
+
+        if (yes) {
+            msg.innerText = "You are already saved through the blood of Jesus Christ!";
+        } else {
+            msg.innerText = "Too bad, Jesus Christ has saved you and He loves you very much.";
+        }
+
+        quote.innerText = BIBLE_VERSES[Math.floor(Math.random() * BIBLE_VERSES.length)];
+        result.style.display = 'block';
+        
+        // Transform the game
+        isLightMode = true;
+        jumpscareEnabled = false;
+        document.body.classList.add('light-mode');
+        document.getElementById('jumpscare-toggle').style.display = 'none';
+    }
+
+    function closeSalvation() {
+        document.getElementById('salvation-result').style.display = 'none';
+        document.getElementById('main-ui').style.display = 'flex';
     }
 
     function gameOver() {
         if (!gameActive) return;
         gameActive = false;
-        
-        // 30% chance of jumpscare
-        if (Math.random() < 0.3) triggerScare();
-        else showOverlay();
+
+        if (jumpscareEnabled && Math.random() < 0.3) {
+            triggerScare();
+        } else {
+            showOverlay();
+        }
+    }
+
+    function showOverlay() {
+        document.getElementById('lose-verse').innerText = isLightMode ? BIBLE_VERSES[Math.floor(Math.random() * BIBLE_VERSES.length)] : "";
+        document.getElementById('score').innerText = Math.floor(score);
+        overlay.style.display = 'flex';
     }
 
     function triggerScare() {
         const js = document.getElementById('jumpscare');
-        const img = document.getElementById('scare-img');
-        const snd = document.getElementById('scream-snd');
-        
-        img.src = IMAGES[Math.floor(Math.random() * IMAGES.length)];
-        snd.src = SOUNDS[Math.floor(Math.random() * SOUNDS.length)];
-        
         js.style.display = 'block';
-        js.classList.add('shaking');
-        snd.play().catch(() => {});
-        
-        setTimeout(() => { 
-            js.style.display = 'none'; 
-            js.classList.remove('shaking');
-            showOverlay(); 
-        }, 1200);
+        document.getElementById('scream-snd').play().catch(() => {});
+        setTimeout(() => { js.style.display = 'none'; showOverlay(); }, 1000);
     }
-
-    function showOverlay() { overlay.style.display = 'flex'; }
 
     function resetGame() {
         score = 0; pipes = []; bird.y = height / 2; bird.velocity = 0;
-        scoreEl.innerText = "0";
         gameActive = true; overlay.style.display = 'none';
-    }
-
-    function copyLink() {
-        const el = document.createElement('textarea');
-        el.value = window.location.href;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-        
-        const btn = document.getElementById('copy-btn');
-        btn.innerText = "LINK COPIED!";
-        setTimeout(() => btn.innerText = "CURSE A FRIEND (COPY LINK)", 2000);
     }
 
     function update() {
         if (!gameActive) return;
-
         bird.velocity += gravity;
         bird.y += bird.velocity;
-
         if (bird.y + bird.radius > height || bird.y - bird.radius < 0) gameOver();
-
         if (frameCount % 110 === 0) spawnPipe();
-        
-        pipes.forEach((p, i) => {
+        pipes.forEach(p => {
             p.x -= pipeSpeed;
-            if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + pipeWidth) {
-                if (bird.y - bird.radius < p.topHeight || bird.y + bird.radius > p.topHeight + pipeGap) {
-                    gameOver();
-                }
+            if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + 70) {
+                if (bird.y - bird.radius < p.topHeight || bird.y + bird.radius > p.topHeight + 190) gameOver();
             }
-            if (!p.passed && p.x + pipeWidth < bird.x) {
-                p.passed = true;
-                score++;
-                scoreEl.innerText = score;
-            }
+            if (!p.passed && p.x + 70 < bird.x) { p.passed = true; score++; }
         });
-
-        pipes = pipes.filter(p => p.x + pipeWidth > 0);
+        pipes = pipes.filter(p => p.x + 70 > 0);
         frameCount++;
     }
 
     function draw() {
-        ctx.fillStyle = '#050505';
+        ctx.fillStyle = isLightMode ? '#87CEEB' : '#050505';
         ctx.fillRect(0, 0, width, height);
 
         pipes.forEach(p => {
-            ctx.fillStyle = '#111';
-            ctx.strokeStyle = '#ff4757';
+            ctx.fillStyle = isLightMode ? '#fff' : '#111';
+            ctx.strokeStyle = isLightMode ? '#ffd700' : '#ff4757';
             ctx.lineWidth = 4;
-            // Top pipe
-            ctx.fillRect(p.x, 0, pipeWidth, p.topHeight);
-            ctx.strokeRect(p.x, -5, pipeWidth, p.topHeight + 5);
-            // Bottom pipe
-            ctx.fillRect(p.x, p.topHeight + pipeGap, pipeWidth, height - p.topHeight - pipeGap);
-            ctx.strokeRect(p.x, p.topHeight + pipeGap, pipeWidth, height - p.topHeight - pipeGap + 5);
+            ctx.fillRect(p.x, 0, 70, p.topHeight);
+            ctx.strokeRect(p.x, -5, 70, p.topHeight + 5);
+            ctx.fillRect(p.x, p.topHeight + 190, 70, height - p.topHeight - 190);
+            ctx.strokeRect(p.x, p.topHeight + 190, 70, height - p.topHeight - 190 + 5);
         });
 
-        ctx.fillStyle = '#00f2ff';
+        // Player
+        ctx.fillStyle = isLightMode ? '#ffd700' : '#00f2ff';
         ctx.shadowBlur = 20;
-        ctx.shadowColor = '#00f2ff';
+        ctx.shadowColor = isLightMode ? '#fff' : '#00f2ff';
         ctx.beginPath();
-        ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
-        ctx.fill();
+        if (isLightMode) {
+            // Draw a simple cross
+            ctx.fillRect(bird.x - 4, bird.y - 10, 8, 20);
+            ctx.fillRect(bird.x - 10, bird.y - 4, 20, 8);
+        } else {
+            ctx.arc(bird.x, bird.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+        }
         ctx.shadowBlur = 0;
     }
 
-    function loop() {
-        update();
-        draw();
-        requestAnimationFrame(loop);
+    function spawnPipe() {
+        const top = Math.random() * (height - 300) + 50;
+        pipes.push({ x: width, topHeight: top, passed: false });
     }
 
-    const jump = () => { if(gameActive) bird.velocity = jumpPower; };
-    window.addEventListener('mousedown', jump);
-    window.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); }, {passive: false});
+    function loop() { update(); draw(); requestAnimationFrame(loop); }
+    window.addEventListener('touchstart', (e) => { e.preventDefault(); if(gameActive) bird.velocity = jumpPower; }, {passive: false});
+    window.addEventListener('mousedown', () => { if(gameActive) bird.velocity = jumpPower; });
     window.addEventListener('resize', resize);
-
-    resize();
-    loop();
+    resize(); loop();
 </script>
 </body>
 </html>
