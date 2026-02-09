@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Blast Clone</title>
+    <style>
+        :root {
+            --bg-color: #121213;
+            --grid-color: #1a1a1b;
+            --cell-size: 45px;
+            --gap: 5px;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #game-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #score-board {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(8, var(--cell-size));
+            grid-template-rows: repeat(8, var(--cell-size));
+            gap: var(--gap);
+            background-color: #3e3e42;
+            padding: var(--gap);
+            border-radius: 8px;
+            user-select: none;
+        }
+
+        .cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background-color: var(--grid-color);
+            border-radius: 4px;
+        }
+
+        .cell.filled { background-color: #4a90e2; border: 1px solid #ffffff33; }
+
+        #piece-container {
+            display: flex;
+            justify-content: space-around;
+            width: 400px;
+            height: 120px;
+            margin-top: 30px;
+            background: #252526;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .piece {
+            display: grid;
+            gap: 2px;
+            cursor: grab;
+            transition: transform 0.1s;
+        }
+
+        .piece-cell {
+            width: 25px;
+            height: 25px;
+            border-radius: 3px;
+        }
+
+        .dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+            position: absolute;
+            pointer-events: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="score-board">Score: <span id="score">0</span></div>
+    <div id="grid"></div>
+    <div id="piece-container"></div>
+</div>
+
+<script>
+    const GRID_SIZE = 8;
+    const gridElement = document.getElementById('grid');
+    const pieceContainer = document.getElementById('piece-container');
+    const scoreElement = document.getElementById('score');
+    
+    let grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+    let score = 0;
+
+    const SHAPES = [
+        { name: 'dot', shape: [[1]], color: '#ff5e5e' },
+        { name: 'line2', shape: [[1, 1]], color: '#ffaa00' },
+        { name: 'line3', shape: [[1, 1, 1]], color: '#febd2f' },
+        { name: 'l-shape', shape: [[1, 0], [1, 1]], color: '#44cc44' },
+        { name: 'square', shape: [[1, 1], [1, 1]], color: '#00d2ff' },
+        { name: 'v-line', shape: [[1], [1], [1]], color: '#9d50bb' }
+    ];
+
+    // Initialize Grid
+    function createGrid() {
+        gridElement.innerHTML = '';
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                gridElement.appendChild(cell);
+            }
+        }
+    }
+
+    function renderGrid() {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            const r = cell.dataset.row;
+            const c = cell.dataset.col;
+            cell.className = 'cell' + (grid[r][c] ? ' filled' : '');
+            cell.style.backgroundColor = grid[r][c] || '';
+        });
+    }
+
+    function spawnPieces() {
+        pieceContainer.innerHTML = '';
+        for (let i = 0; i < 3; i++) {
+            const template = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+            createPieceElement(template);
+        }
+    }
+
+    function createPieceElement(template) {
+        const piece = document.createElement('div');
+        piece.classList.add('piece');
+        piece.style.gridTemplateColumns = `repeat(${template.shape[0].length}, 25px)`;
+        
+        template.shape.forEach((row) => {
+            row.forEach(val => {
+                const cell = document.createElement('div');
+                cell.classList.add('piece-cell');
+                if (val) cell.style.backgroundColor = template.color;
+                else cell.style.backgroundColor = 'transparent';
+                piece.appendChild(cell);
+            });
+        });
+
+        piece.dataset.shape = JSON.stringify(template.shape);
+        piece.dataset.color = template.color;
+        
+        piece.addEventListener('mousedown', startDrag);
+        piece.addEventListener('touchstart', startDrag, { passive: false });
+        pieceContainer.appendChild(piece);
+    }
+
+    let activePiece = null;
+    let offsetX, offsetY;
+
+    function startDrag(e) {
+        activePiece = e.currentTarget;
+        const rect = activePiece.getBoundingClientRect();
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+        offsetX = clientX - rect.left;
+        offsetY = clientY - rect.top;
+
+        activePiece.classList.add('dragging');
+        document.body.appendChild(activePiece);
+        movePiece(clientX, clientY);
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', stopDrag);
+    }
+
+    function onMove(e) {
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        movePiece(clientX, clientY);
+    }
+
+    function movePiece(x, y) {
+        if (!activePiece) return;
+        activePiece.style.left = (x - offsetX) + 'px';
+        activePiece.style.top = (y - offsetY) + 'px';
+    }
+
+    function stopDrag(e) {
+        if (!activePiece) return;
+        
+        const rect = activePiece.getBoundingClientRect();
+        const centerX = rect.left + (rect.width / 2);
+        const centerY = rect.top + (rect.height / 2);
+
+        // Find grid cell under the piece
+        activePiece.style.display = 'none';
+        const elementBelow = document.elementFromPoint(centerX, centerY);
+        activePiece.style.display = 'grid';
+
+        if (elementBelow && elementBelow.classList.contains('cell')) {
+            const r = parseInt(elementBelow.dataset.row);
+            const c = parseInt(elementBelow.dataset.col);
+            const shape = JSON.parse(activePiece.dataset.shape);
+            const color = activePiece.dataset.color;
+
+            if (canPlace(r, c, shape)) {
+                placePiece(r, c, shape, color);
+                activePiece.remove();
+                checkLines();
+                if (pieceContainer.children.length === 0) spawnPieces();
+            } else {
+                returnToTray();
+            }
+        } else {
+            returnToTray();
+        }
+
+        activePiece.classList.remove('dragging');
+        activePiece = null;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', stopDrag);
+    }
+
+    function returnToTray() {
+        activePiece.classList.remove('dragging');
+        activePiece.style.position = 'static';
+        pieceContainer.appendChild(activePiece);
+    }
+
+    function canPlace(row, col, shape) {
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c]) {
+                    if (row + r >= GRID_SIZE || col + c >= GRID_SIZE || grid[row + r][col + c]) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    function placePiece(row, col, shape, color) {
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c]) {
+                    grid[row + r][col + c] = color;
+                }
+            }
+        }
+        renderGrid();
+    }
+
+    function checkLines() {
+        let linesToClear = { rows: [], cols: [] };
+
+        // Check rows
+        for (let r = 0; r < GRID_SIZE; r++) {
+            if (grid[r].every(cell => cell !== 0)) linesToClear.rows.push(r);
+        }
+
+        // Check cols
+        for (let c = 0; c < GRID_SIZE; c++) {
+            let colFull = true;
+            for (let r = 0; r < GRID_SIZE; r++) {
+                if (grid[r][c] === 0) colFull = false;
+            }
+            if (colFull) linesToClear.cols.push(c);
+        }
+
+        linesToClear.rows.forEach(r => grid[r].fill(0));
+        linesToClear.cols.forEach(c => {
+            for (let r = 0; r < GRID_SIZE; r++) grid[r][c] = 0;
+        });
+
+        const totalCleared = linesToClear.rows.length + linesToClear.cols.length;
+        if (totalCleared > 0) {
+            score += totalCleared * 10;
+            scoreElement.innerText = score;
+            renderGrid();
+        }
+    }
+
+    createGrid();
+    spawnPieces();
+
+</script>
+</body>
+</html>
