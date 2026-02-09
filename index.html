@@ -9,61 +9,69 @@
             --neon-blue: #00f2ff;
             --blood-red: #ff4757;
             --holy-gold: #ffd700;
-            --dark-bg: #050505;
-            --light-bg: #f0f8ff;
         }
 
-        body { margin: 0; background: var(--dark-bg); color: white; font-family: 'Courier New', Courier, monospace; overflow: hidden; touch-action: none; transition: background 1.5s, color 1.5s; }
+        body { margin: 0; background: #050505; color: white; font-family: 'Courier New', Courier, monospace; overflow: hidden; touch-action: none; transition: background 1.5s; }
         canvas { display: block; width: 100vw; height: 100vh; }
 
-        /* General UI */
+        /* Scoring and Title */
         #game-title {
-            position: absolute; top: 5%; width: 100%; text-align: center;
-            font-size: 1.2rem; letter-spacing: 5px; color: var(--neon-blue);
-            text-shadow: 0 0 10px var(--neon-blue); pointer-events: none;
-            text-transform: uppercase; animation: flicker 3s infinite;
+            position: absolute; top: 4%; width: 100%; text-align: center;
+            font-size: 1rem; letter-spacing: 4px; color: var(--neon-blue);
+            text-shadow: 0 0 8px var(--neon-blue); pointer-events: none;
+            text-transform: uppercase; opacity: 0.8;
         }
-        body.light-mode #game-title { color: #555; text-shadow: 0 0 10px var(--holy-gold); }
-
         #score-display {
-            position: absolute; top: 12%; width: 100%; text-align: center;
-            font-size: 3rem; font-weight: bold; pointer-events: none;
-            text-shadow: 2px 2px 0px rgba(0,0,0,0.5); z-index: 10;
+            position: absolute; top: 8%; width: 100%; text-align: center;
+            font-size: 3.5rem; font-weight: bold; pointer-events: none;
+            z-index: 10; font-family: sans-serif;
         }
 
         /* End Screen Overlay */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.96); display: none;
+            background: rgba(0, 0, 0, 0.98); display: none;
             flex-direction: column; justify-content: center; align-items: center;
-            padding: 30px; box-sizing: border-box; z-index: 50; text-align: center;
+            padding: 25px; box-sizing: border-box; z-index: 50; text-align: center;
         }
         body.light-mode #overlay { background: rgba(255, 255, 255, 0.98); color: #222; }
 
-        /* Marketing Text Styles */
-        .horror-text { color: var(--blood-red); font-size: 1.1rem; line-height: 1.6; }
-        .light-text { color: #2c3e50; font-size: 1.1rem; line-height: 1.6; font-family: 'Georgia', serif; }
-        .location-tag { font-weight: bold; display: block; margin: 10px 0; font-size: 1.4rem; letter-spacing: 2px; }
-        body.light-mode .location-tag { color: #b8860b; }
+        /* Marketing Text Focus */
+        .marketing-header { font-size: 0.9rem; letter-spacing: 2px; margin-bottom: 5px; opacity: 0.8; }
+        .location-box {
+            border: 2px solid var(--blood-red);
+            padding: 20px;
+            margin: 15px 0;
+            background: rgba(255, 71, 87, 0.1);
+        }
+        .location-text { font-size: 1.8rem; font-weight: bold; display: block; letter-spacing: 3px; color: white; }
+        .date-text { font-size: 1.2rem; display: block; margin-top: 5px; color: var(--blood-red); }
+
+        body.light-mode .location-box { border-color: var(--holy-gold); background: rgba(255, 215, 0, 0.1); }
+        body.light-mode .location-text { color: #000; }
+        body.light-mode .date-text { color: #b8860b; }
 
         /* Buttons */
-        .btn-group { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 280px; margin-top: 20px; }
+        .btn-group { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 280px; margin-top: 10px; }
         button { 
             background: transparent; border: 2px solid var(--neon-blue); color: var(--neon-blue);
-            padding: 15px; cursor: pointer; font-family: inherit; font-weight: bold;
-            text-transform: uppercase; letter-spacing: 1px; transition: 0.3s;
+            padding: 16px; cursor: pointer; font-family: inherit; font-weight: bold;
+            text-transform: uppercase; transition: 0.2s;
         }
         button:active { transform: scale(0.95); }
-        body.light-mode button { border-color: #555; color: #555; }
+        body.light-mode button { border-color: #444; color: #444; }
         
-        #share-btn { border-color: #fff; color: #fff; }
-        #jumpscare-toggle { display: none; border: 1px dashed #555; color: #555; font-size: 0.7rem; margin-top: 5px; }
+        #share-btn { border-color: white; color: white; }
+        body.light-mode #share-btn { border-color: #000; color: #000; }
+        
+        #jumpscare-toggle { display: none; border: 1px dashed #555; color: #555; font-size: 0.7rem; padding: 8px; }
 
         /* Jumpscare */
         #jumpscare { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: black; z-index: 1000; display: none; }
         #jumpscare img { width: 100%; height: 100%; object-fit: cover; }
 
-        @keyframes flicker { 0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; } 20%, 24%, 55% { opacity: 0.3; } }
+        /* Salvation Screens */
+        #salvation-overlay { display:none; position:fixed; z-index:100; top:0; left:0; width:100%; height:100%; background:black; color:white; flex-direction:column; justify-content:center; align-items:center; padding:20px; text-align:center; }
     </style>
 </head>
 <body>
@@ -75,24 +83,24 @@
         <div id="content-area"></div>
         
         <div class="btn-group">
-            <button onclick="resetGame()">RETRY</button>
+            <button onclick="resetGame()">TRY AGAIN</button>
             <button id="share-btn" onclick="shareGame()">SHARE WITH FRIENDS</button>
             <button id="jumpscare-toggle" onclick="showSalvation()">TURN OFF JUMPSCARE</button>
         </div>
     </div>
 
-    <div id="salvation-overlay" style="display:none; position:fixed; z-index:60; top:0; left:0; width:100%; height:100%; background:black; color:white; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+    <div id="salvation-overlay">
         <div id="salvation-dialog">
-            <p style="font-size:1.5rem; letter-spacing:2px;">WANT TO BE SAVED?</p>
-            <div class="btn-group" style="flex-direction:row; justify-content:center;">
+            <p style="font-size:1.4rem;">WANT TO BE SAVED?</p>
+            <div style="display:flex; gap:10px; justify-content:center;">
                 <button onclick="salvationAnswer(true)" style="width:100px;">YES</button>
                 <button onclick="salvationAnswer(false)" style="width:100px;">NO</button>
             </div>
         </div>
-        <div id="salvation-result" style="display:none; padding:20px;">
-            <p id="result-msg" style="font-weight:bold;"></p>
+        <div id="salvation-result" style="display:none;">
+            <p id="result-msg" style="font-weight:bold; font-size:1.1rem;"></p>
             <p id="bible-quote" style="font-style:italic; margin:20px 0; color:var(--holy-gold);"></p>
-            <button onclick="closeSalvation()">CONTINUE IN LIGHT</button>
+            <button onclick="closeSalvation()">ENTER THE LIGHT</button>
         </div>
     </div>
 
@@ -109,22 +117,18 @@
     const scoreEl = document.getElementById('score-display');
     const overlay = document.getElementById('overlay');
     
-    let isLightMode = false;
-    let jumpscareEnabled = true;
-    let hasExperiencedScare = false;
-    let score = 0, gameActive = true;
-    let width, height, dpr;
+    let isLightMode = false, jumpscareEnabled = true, hasExperiencedScare = false;
+    let score = 0, gameActive = true, width, height, dpr, frameCount = 0;
     
-    const gravity = 0.15, jumpPower = -5.5, pipeSpeed = 2.4;
-    let bird = { x: 50, y: 0, velocity: 0, radius: 10 };
-    let pipes = [], frameCount = 0;
+    const gravity = 0.16, jumpPower = -5.8, pipeSpeed = 2.4, pipeGap = 190;
+    let bird = { x: 50, y: 0, velocity: 0, radius: 10 }, pipes = [];
 
     const BIBLE_VERSES = [
         "John 3:16 - For God so loved the world, that He gave His only begotten Son.",
         "Philippians 4:13 - I can do all things through Christ who strengthens me.",
         "Psalm 23:4 - Even though I walk through the valley of shadow, I will fear no evil.",
         "Romans 8:31 - If God is for us, who can be against us?",
-        "2 Timothy 1:7 - For God has not given us a spirit of fear, but of power and of love."
+        "Joshua 1:9 - Be strong and courageous. Do not be afraid."
     ];
 
     function resize() {
@@ -135,10 +139,7 @@
         bird.y = height / 2; bird.x = width * 0.2;
     }
 
-    // --- SALVATION FLOW ---
-    function showSalvation() {
-        document.getElementById('salvation-overlay').style.display = 'flex';
-    }
+    function showSalvation() { document.getElementById('salvation-overlay').style.display = 'flex'; }
 
     function salvationAnswer(yes) {
         document.getElementById('salvation-dialog').style.display = 'none';
@@ -155,16 +156,11 @@
         document.body.classList.add('light-mode');
     }
 
-    function closeSalvation() {
-        document.getElementById('salvation-overlay').style.display = 'none';
-        resetGame();
-    }
+    function closeSalvation() { document.getElementById('salvation-overlay').style.display = 'none'; resetGame(); }
 
-    // --- GAME LOGIC ---
     function gameOver() {
         if (!gameActive) return;
         gameActive = false;
-
         if (jumpscareEnabled && Math.random() < 0.3) {
             hasExperiencedScare = true;
             triggerScare();
@@ -182,76 +178,60 @@
 
     function showEndScreen() {
         const area = document.getElementById('content-area');
-        
         if (isLightMode) {
             area.innerHTML = `
-                <div class="light-text">
-                    "LET YOUR LIGHT SHINE"<br>
-                    <span class="location-tag">JRN 104 | FEB 11-14 | 8 AM</span>
-                    <p style="font-size:0.9rem; color:#666;">${BIBLE_VERSES[Math.floor(Math.random() * BIBLE_VERSES.length)]}</p>
+                <p class="marketing-header">PEACE BE WITH YOU</p>
+                <div class="location-box">
+                    <span class="location-text">VISIT JRN 104</span>
+                    <span class="date-text">FEB 11-14 | 8 AM</span>
                 </div>
+                <p style="font-size:0.85rem; padding:10px;">${BIBLE_VERSES[Math.floor(Math.random() * BIBLE_VERSES.length)]}</p>
             `;
+            document.getElementById('jumpscare-toggle').style.display = 'none';
         } else {
             area.innerHTML = `
-                <div class="horror-text">
-                    YOUR SOUL CAN NEVER ESCAPE...<br>
-                    <span class="glitch">VISIT JRN 104</span>
-                    <span class="location-tag">FEB 11-14 | 8 AM</span>
-                    <p style="font-size:0.8rem; opacity:0.6;">Only the chosen find the way out.</p>
+                <p class="marketing-header">YOUR SOUL CAN NEVER ESCAPE</p>
+                <div class="location-box">
+                    <span class="location-text">VISIT JRN 104</span>
+                    <span class="date-text">FEB 11-14 | 8 AM</span>
                 </div>
+                <p style="font-size:0.8rem; opacity:0.6;">Only the chosen find the way out.</p>
             `;
+            if (hasExperiencedScare) document.getElementById('jumpscare-toggle').style.display = 'block';
         }
-
-        if (hasExperiencedScare && !isLightMode) {
-            document.getElementById('jumpscare-toggle').style.display = 'block';
-        }
-
         overlay.style.display = 'flex';
     }
 
     function resetGame() {
         score = 0; pipes = []; bird.y = height / 2; bird.velocity = 0;
-        scoreEl.innerText = "0";
-        gameActive = true; overlay.style.display = 'none';
+        scoreEl.innerText = "0"; gameActive = true; overlay.style.display = 'none';
     }
 
     function shareGame() {
-        const text = isLightMode ? "I found peace in the Light! Try this game:" : "I dare you to play this game... if you can escape:";
+        const text = isLightMode ? "I found the way out! Visit JRN 104:" : "Can you escape JRN 104? Play this:";
         if (navigator.share) {
-            navigator.share({ title: 'You Have Been Chosen', text: text, url: window.location.href });
+            navigator.share({ title: 'JRN 104 Escape', text: text, url: window.location.href });
         } else {
             navigator.clipboard.writeText(window.location.href);
-            alert("Link copied! Send it to your friends.");
+            alert("Link copied! Share it with your friends.");
         }
     }
 
     function update() {
         if (!gameActive) return;
-        bird.velocity += gravity;
-        bird.y += bird.velocity;
-
+        bird.velocity += gravity; bird.y += bird.velocity;
         if (bird.y + bird.radius > height || bird.y - bird.radius < 0) gameOver();
-
-        if (frameCount % 100 === 0) {
-            const gap = 180;
-            const top = Math.random() * (height - gap - 100) + 50;
+        if (frameCount % 105 === 0) {
+            const top = Math.random() * (height - pipeGap - 120) + 60;
             pipes.push({ x: width, topHeight: top, passed: false });
         }
-
         pipes.forEach(p => {
             p.x -= pipeSpeed;
-            // Collision
             if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + 70) {
-                if (bird.y - bird.radius < p.topHeight || bird.y + bird.radius > p.topHeight + 180) gameOver();
+                if (bird.y - bird.radius < p.topHeight || bird.y + bird.radius > p.topHeight + pipeGap) gameOver();
             }
-            // Correct Score Counting
-            if (!p.passed && p.x + 70 < bird.x) { 
-                p.passed = true; 
-                score++; 
-                scoreEl.innerText = score; 
-            }
+            if (!p.passed && p.x + 70 < bird.x) { p.passed = true; score++; scoreEl.innerText = score; }
         });
-
         pipes = pipes.filter(p => p.x + 70 > 0);
         frameCount++;
     }
@@ -259,23 +239,19 @@
     function draw() {
         ctx.fillStyle = isLightMode ? '#f0f8ff' : '#050505';
         ctx.fillRect(0, 0, width, height);
-
         pipes.forEach(p => {
             ctx.fillStyle = isLightMode ? '#fff' : '#111';
             ctx.strokeStyle = isLightMode ? '#daa520' : '#ff4757';
             ctx.lineWidth = 4;
             ctx.fillRect(p.x, 0, 70, p.topHeight);
             ctx.strokeRect(p.x, -2, 70, p.topHeight + 2);
-            ctx.fillRect(p.x, p.topHeight + 180, 70, height);
-            ctx.strokeRect(p.x, p.topHeight + 180, 70, height);
+            ctx.fillRect(p.x, p.topHeight + pipeGap, 70, height);
+            ctx.strokeRect(p.x, p.topHeight + pipeGap, 70, height);
         });
-
         ctx.fillStyle = isLightMode ? '#ffd700' : '#00f2ff';
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = 15; ctx.shadowColor = ctx.fillStyle;
         if (isLightMode) {
-            ctx.fillRect(bird.x - 4, bird.y - 12, 8, 24); 
-            ctx.fillRect(bird.x - 12, bird.y - 4, 24, 8); 
+            ctx.fillRect(bird.x - 4, bird.y - 12, 8, 24); ctx.fillRect(bird.x - 12, bird.y - 4, 24, 8); 
         } else {
             ctx.beginPath(); ctx.arc(bird.x, bird.y, 10, 0, Math.PI * 2); ctx.fill();
         }
@@ -283,8 +259,9 @@
     }
 
     function loop() { update(); draw(); requestAnimationFrame(loop); }
-    window.addEventListener('touchstart', (e) => { e.preventDefault(); if(gameActive) bird.velocity = jumpPower; }, {passive: false});
-    window.addEventListener('mousedown', () => { if(gameActive) bird.velocity = jumpPower; });
+    const jump = (e) => { if(e.type === 'touchstart') e.preventDefault(); if(gameActive) bird.velocity = jumpPower; };
+    window.addEventListener('touchstart', jump, {passive: false});
+    window.addEventListener('mousedown', jump);
     window.addEventListener('resize', resize);
     resize(); loop();
 </script>
