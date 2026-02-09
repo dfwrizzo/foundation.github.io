@@ -2,305 +2,163 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Blast Clone</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Orbit Jump</title>
     <style>
-        :root {
-            --bg-color: #121213;
-            --grid-color: #1a1a1b;
-            --cell-size: 45px;
-            --gap: 5px;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 0;
-            overflow: hidden;
-            touch-action: none;
-        }
-
-        #game-container {
-            margin-top: 20px;
-            text-align: center;
-        }
-
-        #score-board {
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        #grid {
-            display: grid;
-            grid-template-columns: repeat(8, var(--cell-size));
-            grid-template-rows: repeat(8, var(--cell-size));
-            gap: var(--gap);
-            background-color: #3e3e42;
-            padding: var(--gap);
-            border-radius: 8px;
-            user-select: none;
-        }
-
-        .cell {
-            width: var(--cell-size);
-            height: var(--cell-size);
-            background-color: var(--grid-color);
-            border-radius: 4px;
-        }
-
-        .cell.filled { background-color: #4a90e2; border: 1px solid #ffffff33; }
-
-        #piece-container {
-            display: flex;
-            justify-content: space-around;
-            width: 400px;
-            height: 120px;
-            margin-top: 30px;
-            background: #252526;
-            padding: 10px;
-            border-radius: 10px;
-        }
-
-        .piece {
-            display: grid;
-            gap: 2px;
-            cursor: grab;
-            transition: transform 0.1s;
-        }
-
-        .piece-cell {
-            width: 25px;
-            height: 25px;
-            border-radius: 3px;
-        }
-
-        .dragging {
-            opacity: 0.5;
-            cursor: grabbing;
-            position: absolute;
-            pointer-events: none;
-            z-index: 1000;
-        }
+        body { margin: 0; background: #0a0a0a; color: white; font-family: sans-serif; overflow: hidden; touch-action: none; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; }
+        #score { font-size: 48px; font-weight: bold; opacity: 0.8; }
+        #msg { font-size: 18px; color: #aaa; }
     </style>
 </head>
 <body>
-
-<div id="game-container">
-    <div id="score-board">Score: <span id="score">0</span></div>
-    <div id="grid"></div>
-    <div id="piece-container"></div>
-</div>
+    <div id="ui">
+        <div id="score">0</div>
+        <div id="msg">Tap to Jump Orbit</div>
+    </div>
+    <canvas id="game"></canvas>
 
 <script>
-    const GRID_SIZE = 8;
-    const gridElement = document.getElementById('grid');
-    const pieceContainer = document.getElementById('piece-container');
-    const scoreElement = document.getElementById('score');
-    
-    let grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+
+    let width, height, centerX, centerY;
     let score = 0;
+    let gameActive = true;
+    
+    // Game constants
+    const orbits = [60, 110, 160]; // Radii of the three orbits
+    let player = { orbitIdx: 0, angle: 0, speed: 0.05, size: 8 };
+    let obstacles = [];
+    let lastObstacleTime = 0;
 
-    const SHAPES = [
-        { name: 'dot', shape: [[1]], color: '#ff5e5e' },
-        { name: 'line2', shape: [[1, 1]], color: '#ffaa00' },
-        { name: 'line3', shape: [[1, 1, 1]], color: '#febd2f' },
-        { name: 'l-shape', shape: [[1, 0], [1, 1]], color: '#44cc44' },
-        { name: 'square', shape: [[1, 1], [1, 1]], color: '#00d2ff' },
-        { name: 'v-line', shape: [[1], [1], [1]], color: '#9d50bb' }
-    ];
-
-    // Initialize Grid
-    function createGrid() {
-        gridElement.innerHTML = '';
-        for (let r = 0; r < GRID_SIZE; r++) {
-            for (let c = 0; c < GRID_SIZE; c++) {
-                const cell = document.createElement('div');
-                cell.classList.add('cell');
-                cell.dataset.row = r;
-                cell.dataset.col = c;
-                gridElement.appendChild(cell);
-            }
-        }
+    function init() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        centerX = width / 2;
+        centerY = height / 2;
     }
 
-    function renderGrid() {
-        const cells = document.querySelectorAll('.cell');
-        cells.forEach(cell => {
-            const r = cell.dataset.row;
-            const c = cell.dataset.col;
-            cell.className = 'cell' + (grid[r][c] ? ' filled' : '');
-            cell.style.backgroundColor = grid[r][c] || '';
+    function spawnObstacle() {
+        const orbitIdx = Math.floor(Math.random() * orbits.length);
+        const speed = (0.02 + Math.random() * 0.03) * (Math.random() > 0.5 ? 1 : -1);
+        obstacles.push({
+            orbitIdx,
+            angle: Math.random() * Math.PI * 2,
+            speed,
+            width: 0.4 // Arc width in radians
         });
     }
 
-    function spawnPieces() {
-        pieceContainer.innerHTML = '';
-        for (let i = 0; i < 3; i++) {
-            const template = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-            createPieceElement(template);
-        }
-    }
+    function update() {
+        if (!gameActive) return;
 
-    function createPieceElement(template) {
-        const piece = document.createElement('div');
-        piece.classList.add('piece');
-        piece.style.gridTemplateColumns = `repeat(${template.shape[0].length}, 25px)`;
-        
-        template.shape.forEach((row) => {
-            row.forEach(val => {
-                const cell = document.createElement('div');
-                cell.classList.add('piece-cell');
-                if (val) cell.style.backgroundColor = template.color;
-                else cell.style.backgroundColor = 'transparent';
-                piece.appendChild(cell);
-            });
+        // Move player
+        player.angle += player.speed;
+
+        // Move obstacles
+        obstacles.forEach(obs => obs.angle += obs.speed);
+
+        // Difficulty: spawn faster over time
+        if (Date.now() - lastObstacleTime > 1500 - Math.min(score * 20, 1000)) {
+            spawnObstacle();
+            lastObstacleTime = Date.now();
+        }
+
+        // Collision Detection
+        obstacles.forEach(obs => {
+            if (obs.orbitIdx === player.orbitIdx) {
+                let diff = Math.abs(player.angle % (Math.PI * 2) - obs.angle % (Math.PI * 2));
+                if (diff < obs.width || diff > (Math.PI * 2 - obs.width)) {
+                    gameOver();
+                }
+            }
         });
 
-        piece.dataset.shape = JSON.stringify(template.shape);
-        piece.dataset.color = template.color;
+        // Cleanup off-screen/old obstacles
+        if (obstacles.length > 10) obstacles.shift();
         
-        piece.addEventListener('mousedown', startDrag);
-        piece.addEventListener('touchstart', startDrag, { passive: false });
-        pieceContainer.appendChild(piece);
+        score += 0.01; // Tiny score increment for survival
+        scoreEl.innerText = Math.floor(score);
     }
 
-    let activePiece = null;
-    let offsetX, offsetY;
+    function draw() {
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(0, 0, width, height);
 
-    function startDrag(e) {
-        activePiece = e.currentTarget;
-        const rect = activePiece.getBoundingClientRect();
-        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        // Draw Orbits
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        orbits.forEach(r => {
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+            ctx.stroke();
+        });
 
-        offsetX = clientX - rect.left;
-        offsetY = clientY - rect.top;
+        // Draw Obstacles
+        obstacles.forEach(obs => {
+            ctx.strokeStyle = '#ff4757';
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, orbits[obs.orbitIdx], obs.angle, obs.angle + obs.width);
+            ctx.stroke();
+        });
 
-        activePiece.classList.add('dragging');
-        document.body.appendChild(activePiece);
-        movePiece(clientX, clientY);
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', stopDrag);
-        document.addEventListener('touchmove', onMove, { passive: false });
-        document.addEventListener('touchend', stopDrag);
-    }
-
-    function onMove(e) {
-        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-        movePiece(clientX, clientY);
-    }
-
-    function movePiece(x, y) {
-        if (!activePiece) return;
-        activePiece.style.left = (x - offsetX) + 'px';
-        activePiece.style.top = (y - offsetY) + 'px';
-    }
-
-    function stopDrag(e) {
-        if (!activePiece) return;
+        // Draw Player
+        const px = centerX + Math.cos(player.angle) * orbits[player.orbitIdx];
+        const py = centerY + Math.sin(player.angle) * orbits[player.orbitIdx];
         
-        const rect = activePiece.getBoundingClientRect();
-        const centerX = rect.left + (rect.width / 2);
-        const centerY = rect.top + (rect.height / 2);
+        ctx.fillStyle = '#1e90ff';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#1e90ff';
+        ctx.beginPath();
+        ctx.arc(px, py, player.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0; // Reset shadow
+    }
 
-        // Find grid cell under the piece
-        activePiece.style.display = 'none';
-        const elementBelow = document.elementFromPoint(centerX, centerY);
-        activePiece.style.display = 'grid';
+    function gameOver() {
+        gameActive = false;
+        document.getElementById('msg').innerText = "GAME OVER - Tap to Restart";
+    }
 
-        if (elementBelow && elementBelow.classList.contains('cell')) {
-            const r = parseInt(elementBelow.dataset.row);
-            const c = parseInt(elementBelow.dataset.col);
-            const shape = JSON.parse(activePiece.dataset.shape);
-            const color = activePiece.dataset.color;
+    function reset() {
+        score = 0;
+        player.orbitIdx = 0;
+        obstacles = [];
+        gameActive = true;
+        document.getElementById('msg').innerText = "Tap to Jump Orbit";
+    }
 
-            if (canPlace(r, c, shape)) {
-                placePiece(r, c, shape, color);
-                activePiece.remove();
-                checkLines();
-                if (pieceContainer.children.length === 0) spawnPieces();
-            } else {
-                returnToTray();
-            }
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    // Controls
+    window.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (!gameActive) {
+            reset();
         } else {
-            returnToTray();
+            player.orbitIdx = (player.orbitIdx + 1) % orbits.length;
+            score += 5; // Bonus for jumping
         }
+    });
 
-        activePiece.classList.remove('dragging');
-        activePiece = null;
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', stopDrag);
-    }
+    // Support desktop clicking too
+    window.addEventListener('mousedown', () => {
+        if (!gameActive) reset();
+        else player.orbitIdx = (player.orbitIdx + 1) % orbits.length;
+    });
 
-    function returnToTray() {
-        activePiece.classList.remove('dragging');
-        activePiece.style.position = 'static';
-        pieceContainer.appendChild(activePiece);
-    }
+    window.addEventListener('resize', init);
 
-    function canPlace(row, col, shape) {
-        for (let r = 0; r < shape.length; r++) {
-            for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c]) {
-                    if (row + r >= GRID_SIZE || col + c >= GRID_SIZE || grid[row + r][col + c]) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    function placePiece(row, col, shape, color) {
-        for (let r = 0; r < shape.length; r++) {
-            for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c]) {
-                    grid[row + r][col + c] = color;
-                }
-            }
-        }
-        renderGrid();
-    }
-
-    function checkLines() {
-        let linesToClear = { rows: [], cols: [] };
-
-        // Check rows
-        for (let r = 0; r < GRID_SIZE; r++) {
-            if (grid[r].every(cell => cell !== 0)) linesToClear.rows.push(r);
-        }
-
-        // Check cols
-        for (let c = 0; c < GRID_SIZE; c++) {
-            let colFull = true;
-            for (let r = 0; r < GRID_SIZE; r++) {
-                if (grid[r][c] === 0) colFull = false;
-            }
-            if (colFull) linesToClear.cols.push(c);
-        }
-
-        linesToClear.rows.forEach(r => grid[r].fill(0));
-        linesToClear.cols.forEach(c => {
-            for (let r = 0; r < GRID_SIZE; r++) grid[r][c] = 0;
-        });
-
-        const totalCleared = linesToClear.rows.length + linesToClear.cols.length;
-        if (totalCleared > 0) {
-            score += totalCleared * 10;
-            scoreElement.innerText = score;
-            renderGrid();
-        }
-    }
-
-    createGrid();
-    spawnPieces();
-
+    init();
+    loop();
 </script>
 </body>
 </html>
