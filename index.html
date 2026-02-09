@@ -25,7 +25,7 @@
 
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9); display: none;
+            background: rgba(0, 0, 0, 0.95); display: none;
             flex-direction: column; justify-content: center; align-items: center;
             padding: 20px; box-sizing: border-box; z-index: 20; text-align: center;
         }
@@ -44,7 +44,7 @@
         }
         button:active { background: var(--neon-blue); color: black; }
 
-        #copy-btn { border-color: #777; color: #bbb; font-size: 0.7rem; }
+        #copy-btn { border-color: #777; color: #bbb; font-size: 0.7rem; border-style: dashed; }
 
         #jumpscare {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -56,6 +56,17 @@
             0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; }
             20%, 24%, 55% { opacity: 0.3; }
         }
+
+        /* Screen Shake Animation */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px); }
+            20% { transform: translate(-3px, 0px); }
+            40% { transform: translate(3px, 2px); }
+            60% { transform: translate(-3px, 1px); }
+            80% { transform: translate(-1px, -1px); }
+            100% { transform: translate(1px, -2px); }
+        }
+        .shaking { animation: shake 0.1s infinite; }
     </style>
 </head>
 <body>
@@ -91,19 +102,19 @@
     const scoreEl = document.getElementById('score');
     const overlay = document.getElementById('overlay');
 
-    // ASSETS - Replace with your own hosted images/sounds
-    const IMAGES = ["https://via.placeholder.com/800x1200/000000/ff0000?text=I+SEE+YOU"];
+    // --- CONFIGURE ASSETS HERE ---
+    const IMAGES = ["https://via.placeholder.com/800x1200/000000/ff0000?text=I+SEE+YOU"]; 
     const SOUNDS = ["https://www.soundjay.com/human/sounds/scream-01.mp3"];
 
     let width, height, dpr;
     let score = 0, gameActive = true;
     
-    // Physics Constants
-    const gravity = 0.25;
-    const jumpPower = -5;
-    const pipeWidth = 60;
-    const pipeGap = 180;
-    const pipeSpeed = 2.5;
+    // Updated Physics for Floatier Movement
+    const gravity = 0.15;    
+    const jumpPower = -6;   
+    const pipeWidth = 70;
+    const pipeGap = 190;
+    const pipeSpeed = 2.2;
 
     let bird = { x: 50, y: 0, velocity: 0, radius: 10 };
     let pipes = [];
@@ -121,7 +132,7 @@
     }
 
     function spawnPipe() {
-        const minPipeHeight = 50;
+        const minPipeHeight = 80;
         const totalPipeSpace = height - pipeGap;
         const topPipeHeight = Math.random() * (totalPipeSpace - minPipeHeight * 2) + minPipeHeight;
         pipes.push({ x: width, topHeight: topPipeHeight, passed: false });
@@ -130,7 +141,9 @@
     function gameOver() {
         if (!gameActive) return;
         gameActive = false;
-        if (Math.random() < 0.25) triggerScare();
+        
+        // 30% chance of jumpscare
+        if (Math.random() < 0.3) triggerScare();
         else showOverlay();
     }
 
@@ -138,22 +151,37 @@
         const js = document.getElementById('jumpscare');
         const img = document.getElementById('scare-img');
         const snd = document.getElementById('scream-snd');
+        
         img.src = IMAGES[Math.floor(Math.random() * IMAGES.length)];
         snd.src = SOUNDS[Math.floor(Math.random() * SOUNDS.length)];
+        
         js.style.display = 'block';
+        js.classList.add('shaking');
         snd.play().catch(() => {});
-        setTimeout(() => { js.style.display = 'none'; showOverlay(); }, 1000);
+        
+        setTimeout(() => { 
+            js.style.display = 'none'; 
+            js.classList.remove('shaking');
+            showOverlay(); 
+        }, 1200);
     }
 
     function showOverlay() { overlay.style.display = 'flex'; }
 
     function resetGame() {
         score = 0; pipes = []; bird.y = height / 2; bird.velocity = 0;
+        scoreEl.innerText = "0";
         gameActive = true; overlay.style.display = 'none';
     }
 
     function copyLink() {
-        navigator.clipboard.writeText(window.location.href);
+        const el = document.createElement('textarea');
+        el.value = window.location.href;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        
         const btn = document.getElementById('copy-btn');
         btn.innerText = "LINK COPIED!";
         setTimeout(() => btn.innerText = "CURSE A FRIEND (COPY LINK)", 2000);
@@ -165,23 +193,17 @@
         bird.velocity += gravity;
         bird.y += bird.velocity;
 
-        // Wall collision
         if (bird.y + bird.radius > height || bird.y - bird.radius < 0) gameOver();
 
-        // Pipe logic
-        if (frameCount % 100 === 0) spawnPipe();
+        if (frameCount % 110 === 0) spawnPipe();
         
         pipes.forEach((p, i) => {
             p.x -= pipeSpeed;
-
-            // Collision detection
             if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + pipeWidth) {
                 if (bird.y - bird.radius < p.topHeight || bird.y + bird.radius > p.topHeight + pipeGap) {
                     gameOver();
                 }
             }
-
-            // Score logic
             if (!p.passed && p.x + pipeWidth < bird.x) {
                 p.passed = true;
                 score++;
@@ -197,11 +219,10 @@
         ctx.fillStyle = '#050505';
         ctx.fillRect(0, 0, width, height);
 
-        // Draw Pipes (Walls)
         pipes.forEach(p => {
-            ctx.fillStyle = '#1a1a1a';
+            ctx.fillStyle = '#111';
             ctx.strokeStyle = '#ff4757';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 4;
             // Top pipe
             ctx.fillRect(p.x, 0, pipeWidth, p.topHeight);
             ctx.strokeRect(p.x, -5, pipeWidth, p.topHeight + 5);
@@ -210,7 +231,6 @@
             ctx.strokeRect(p.x, p.topHeight + pipeGap, pipeWidth, height - p.topHeight - pipeGap + 5);
         });
 
-        // Draw Soul (Player)
         ctx.fillStyle = '#00f2ff';
         ctx.shadowBlur = 20;
         ctx.shadowColor = '#00f2ff';
@@ -228,7 +248,7 @@
 
     const jump = () => { if(gameActive) bird.velocity = jumpPower; };
     window.addEventListener('mousedown', jump);
-    window.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
+    window.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); }, {passive: false});
     window.addEventListener('resize', resize);
 
     resize();
