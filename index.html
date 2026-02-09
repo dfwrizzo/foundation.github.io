@@ -65,11 +65,43 @@
         body.light-mode #share-btn { border-color: #000; color: #000; }
         
         #jumpscare-toggle { display: none; border: 1px dashed #555; color: #555; font-size: 0.7rem; padding: 8px; }
+        
+       /* Intense Screen Shake */
+@keyframes intense-shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-2px, -3px) rotate(-1deg); }
+    20% { transform: translate(-4px, 0px) rotate(1deg); }
+    30% { transform: translate(4px, 3px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 3px) rotate(-1deg); }
+    60% { transform: translate(-4px, 1px) rotate(0deg); }
+    70% { transform: translate(4px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 3px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
 
-        /* Jumpscare */
-        #jumpscare { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: black; z-index: 1000; display: none; }
-        #jumpscare img { width: 100%; height: 100%; object-fit: cover; }
+.shake-active {
+    animation: intense-shake 0.1s infinite;
+}
 
+#jumpscare {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: black;
+    z-index: 1000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+#jumpscare img {
+    width: 115%; /* Oversized for shake room */
+    height: 115%;
+    object-fit: cover;
+}
         /* Salvation Screens */
         #salvation-overlay { display:none; position:fixed; z-index:100; top:0; left:0; width:100%; height:100%; background:black; color:white; flex-direction:column; justify-content:center; align-items:center; padding:20px; text-align:center; }
     </style>
@@ -153,7 +185,8 @@
         
         isLightMode = true;
         jumpscareEnabled = false;
-        document.body.classList.add('light-mode');
+        document.getElementById('jumpscare').classList.remove('shake-active'); // Security check
+    document.body.classList.add('light-mode');
     }
 
     function closeSalvation() { document.getElementById('salvation-overlay').style.display = 'none'; resetGame(); }
@@ -169,12 +202,42 @@
         }
     }
 
-    function triggerScare() {
-        const js = document.getElementById('jumpscare');
-        js.style.display = 'block';
-        document.getElementById('scream-snd').play().catch(() => {});
-        setTimeout(() => { js.style.display = 'none'; showEndScreen(); }, 1200);
-    }
+    function triggerScare() // Point these to your folder paths
+const SCARE_IMAGES = [
+    "assets/scare1.jpg", 
+    "assets/scare2.jpg"
+];
+
+const SCARE_SOUNDS = [
+    "assets/scream.mp3"
+];
+
+function triggerScare() {
+    const js = document.getElementById('jumpscare');
+    const img = document.getElementById('scare-img');
+    const snd = document.getElementById('scream-snd');
+
+    // Pick random assets from your folder
+    img.src = SCARE_IMAGES[Math.floor(Math.random() * SCARE_IMAGES.length)];
+    snd.src = SCARE_SOUNDS[Math.floor(Math.random() * SCARE_SOUNDS.length)];
+
+    // Reset and play sound
+    snd.currentTime = 0;
+    snd.volume = 1.0;
+    snd.play().catch(() => console.log("Audio blocked - interaction needed"));
+
+    // Show and Shake
+    js.style.display = 'flex';
+    js.classList.add('shake-active');
+
+    // Cleanup
+    setTimeout(() => {
+        js.style.display = 'none';
+        js.classList.remove('shake-active');
+        snd.pause();
+        showEndScreen();
+    }, 1200);
+}
 
     function showEndScreen() {
         const area = document.getElementById('content-area');
